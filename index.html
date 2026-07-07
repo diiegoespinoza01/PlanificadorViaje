@@ -96,6 +96,66 @@
     font-style: italic;
   }
 
+  .format-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 0 28px 16px;
+  }
+
+  #font-select {
+    font-family: inherit;
+    font-size: 0.78rem;
+    color: var(--text);
+    background: var(--cell-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+  }
+
+  .format-buttons {
+    display: flex;
+    gap: 6px;
+  }
+
+  .format-buttons button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--cell-bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .format-buttons button:hover {
+    border-color: var(--accent);
+  }
+
+  .format-buttons button.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+  }
+
+  .format-hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .format-hint { display: none; }
+    .format-bar { padding-left: 12px; padding-right: 12px; }
+  }
+
   .weekday-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -180,11 +240,10 @@
     padding: 1px 8px;
   }
 
-  .day-cell textarea {
+  .day-cell .day-note {
     flex: 1;
     width: 100%;
-    border: none;
-    background: transparent;
+    overflow: auto;
     resize: vertical;
     font-family: inherit;
     font-size: 0.85rem;
@@ -193,9 +252,11 @@
     padding: 0 12px 12px;
     outline: none;
     min-height: 140px;
+    cursor: text;
   }
 
-  .day-cell textarea::placeholder {
+  .day-cell .day-note:empty:before {
+    content: attr(data-placeholder);
     color: #6b6357;
   }
 
@@ -211,7 +272,7 @@
     header { padding-left: 12px; padding-right: 12px; }
     .day-number { font-size: 0.7rem; padding: 6px 6px 2px; }
     .day-cell.today .day-number::after { display: none; }
-    .day-cell textarea { font-size: 0.78rem; padding: 0 6px 6px; min-height: 100px; }
+    .day-cell .day-note { font-size: 0.78rem; padding: 0 6px 6px; min-height: 100px; }
     .day-cell { min-height: 130px; }
   }
 </style>
@@ -226,6 +287,26 @@
     <input id="import-input" type="file" accept="application/json" hidden />
   </div>
 </header>
+
+<div class="format-bar">
+  <select id="font-select" title="Tipo de letra (Ctrl/Cmd + Shift + F)">
+    <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">Predeterminada</option>
+    <option value="Georgia, serif">Georgia</option>
+    <option value="'Times New Roman', Times, serif">Times New Roman</option>
+    <option value="Arial, Helvetica, sans-serif">Arial</option>
+    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+    <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+    <option value="'Courier New', Courier, monospace">Courier New</option>
+    <option value="'Comic Sans MS', cursive">Comic Sans MS</option>
+    <option value="'Brush Script MT', cursive">Brush Script</option>
+  </select>
+  <div class="format-buttons">
+    <button type="button" data-cmd="bold" title="Negrita (Ctrl/Cmd + B)"><b>B</b></button>
+    <button type="button" data-cmd="italic" title="Cursiva (Ctrl/Cmd + I)"><i>I</i></button>
+    <button type="button" data-cmd="underline" title="Subrayado (Ctrl/Cmd + U)"><u>U</u></button>
+  </div>
+  <span class="format-hint">Selecciona el texto en un día y aplica el formato</span>
+</div>
 
 <div class="weekday-row">
   <div>Lun</div>
@@ -271,6 +352,32 @@
     saveTimer = setTimeout(persist, 400);
   }
 
+  // Datos guardados antes de esta versión eran texto plano (sin etiquetas HTML);
+  // se convierten aquí para no perder los saltos de línea al mostrarlos.
+  function toHtml(value) {
+    if (!value) return "";
+    if (/<[a-z][\s\S]*>/i.test(value)) return value;
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/\n/g, "<br>");
+  }
+
+  function saveNote(note) {
+    if (note.innerHTML === "<br>") note.innerHTML = "";
+    data[note.dataset.date] = note.innerHTML;
+    scheduleSave();
+  }
+
+  function handlePaste(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  }
+
+  document.execCommand("defaultParagraphSeparator", false, "br");
+
   for (let day = 1; day <= TOTAL_DAYS; day++) {
     const dateStr = `2027-02-${String(day).padStart(2, "0")}`;
 
@@ -283,17 +390,102 @@
     label.textContent = `${day} de febrero`;
     cell.appendChild(label);
 
-    const textarea = document.createElement("textarea");
-    textarea.placeholder = "Destinos, paradas, alojamiento, horarios…";
-    textarea.value = data[dateStr] || "";
-    textarea.addEventListener("input", () => {
-      data[dateStr] = textarea.value;
-      scheduleSave();
-    });
-    cell.appendChild(textarea);
+    const note = document.createElement("div");
+    note.className = "day-note";
+    note.contentEditable = "true";
+    note.dataset.date = dateStr;
+    note.setAttribute("data-placeholder", "Destinos, paradas, alojamiento, horarios…");
+    note.innerHTML = toHtml(data[dateStr]);
+    note.addEventListener("input", () => saveNote(note));
+    note.addEventListener("paste", handlePaste);
+    cell.appendChild(note);
 
     calendarEl.appendChild(cell);
   }
+
+  // --- Formato de texto (negrita, cursiva, subrayado, tipo de letra) ---
+  const fontSelect = document.getElementById("font-select");
+  const formatButtons = document.querySelectorAll(".format-buttons button");
+  let activeNote = null;
+  let savedRange = null;
+
+  document.addEventListener("selectionchange", () => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    const node = sel.anchorNode;
+    const el = node && (node.nodeType === 1 ? node : node.parentElement);
+    const note = el && el.closest && el.closest(".day-note");
+    if (note) {
+      activeNote = note;
+      savedRange = sel.getRangeAt(0).cloneRange();
+      updateFormatButtons();
+    }
+  });
+
+  function updateFormatButtons() {
+    formatButtons.forEach((btn) => {
+      let active = false;
+      try {
+        active = document.queryCommandState(btn.dataset.cmd);
+      } catch (e) {}
+      btn.classList.toggle("active", active);
+    });
+  }
+
+  formatButtons.forEach((btn) => {
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
+    btn.addEventListener("click", () => {
+      if (!activeNote) return;
+      activeNote.focus();
+      document.execCommand(btn.dataset.cmd, false, null);
+      saveNote(activeNote);
+      updateFormatButtons();
+    });
+  });
+
+  fontSelect.addEventListener("change", () => {
+    if (!activeNote) return;
+    activeNote.focus();
+    if (savedRange) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+    }
+    document.execCommand("fontName", false, fontSelect.value);
+    saveNote(activeNote);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const key = e.key.toLowerCase();
+
+    if (e.shiftKey && key === "f") {
+      e.preventDefault();
+      fontSelect.focus();
+      return;
+    }
+
+    const note = e.target.closest && e.target.closest(".day-note");
+    if (!note) return;
+
+    if (key === "b") {
+      e.preventDefault();
+      document.execCommand("bold");
+      saveNote(note);
+      updateFormatButtons();
+    } else if (key === "i") {
+      e.preventDefault();
+      document.execCommand("italic");
+      saveNote(note);
+      updateFormatButtons();
+    } else if (key === "u") {
+      e.preventDefault();
+      document.execCommand("underline");
+      saveNote(note);
+      updateFormatButtons();
+    }
+  });
 
   document.getElementById("export-btn").addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -318,10 +510,8 @@
         const imported = JSON.parse(reader.result);
         data = imported;
         persist();
-        document.querySelectorAll(".day-cell textarea").forEach((ta, i) => {
-          const day = i + 1;
-          const dateStr = `2027-02-${String(day).padStart(2, "0")}`;
-          ta.value = data[dateStr] || "";
+        document.querySelectorAll(".day-note").forEach((note) => {
+          note.innerHTML = toHtml(data[note.dataset.date]);
         });
       } catch (err) {
         alert("El archivo no tiene un formato válido.");
@@ -335,6 +525,6 @@
     if (!confirm("¿Vaciar todo el itinerario? Esta acción no se puede deshacer.")) return;
     data = {};
     persist();
-    document.querySelectorAll(".day-cell textarea").forEach((ta) => (ta.value = ""));
+    document.querySelectorAll(".day-note").forEach((note) => (note.innerHTML = ""));
   });
 </script>
