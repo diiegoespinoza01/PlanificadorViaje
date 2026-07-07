@@ -2,23 +2,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root {
-    --bg: #f7f2ec;
-    --cell-bg: #fffdfa;
-    --border: #e9e0d3;
-    --text: #4a423a;
-    --muted: #a89d8c;
-    --accent: #a97ca0;
-    --today-bg: #fdf1e6;
-    --today-border: #eecfa6;
+    --bg: #211f1c;
+    --cell-bg: #2b2824;
+    --border: #3d3831;
+    --text: #ece6db;
+    --muted: #948a7b;
+    --accent: #d6a8cc;
+    --today-bg: #3a2e20;
+    --today-border: #6b4c28;
 
     /* acentos pastel por día de la semana */
-    --mon: #9c8fc4; --mon-soft: #ece8f7;
-    --tue: #d98aa0; --tue-soft: #faeaee;
-    --wed: #7fa88f; --wed-soft: #e9f1ea;
-    --thu: #cf9760; --thu-soft: #f7ecdf;
-    --fri: #6f9cbd; --fri-soft: #e6eff4;
-    --sat: #bfa04f; --sat-soft: #f5efdc;
-    --sun: #b487ad; --sun-soft: #f4e9f2;
+    --mon: #b3a3e3; --mon-soft: #322e45;
+    --tue: #e6a1b6; --tue-soft: #3b2831;
+    --wed: #9bcaab; --wed-soft: #253328;
+    --thu: #e2ac74; --thu-soft: #3b2f20;
+    --fri: #8fbfe0; --fri-soft: #223140;
+    --sat: #d8bf78; --sat-soft: #3a3320;
+    --sun: #d1a2c8; --sun-soft: #382a36;
   }
 
   * { box-sizing: border-box; }
@@ -69,7 +69,7 @@
 
   .toolbar button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
   }
 
   .toolbar button:active {
@@ -137,12 +137,12 @@
     flex-direction: column;
     min-height: 190px;
     overflow: hidden;
-    box-shadow: 0 1px 3px rgba(74, 66, 58, 0.05);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
     transition: box-shadow 0.15s ease;
   }
 
   .day-cell:hover {
-    box-shadow: 0 4px 12px rgba(74, 66, 58, 0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   }
 
   .day-cell:nth-child(7n+1) { border-top-color: var(--mon); }
@@ -174,8 +174,8 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: #b9772f;
-    background: #fbe4c4;
+    color: #f0c98a;
+    background: #4a381f;
     border-radius: 999px;
     padding: 1px 8px;
   }
@@ -196,7 +196,7 @@
   }
 
   .day-cell textarea::placeholder {
-    color: #cfc7ba;
+    color: #6b6357;
   }
 
   footer {
